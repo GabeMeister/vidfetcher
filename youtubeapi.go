@@ -3,12 +3,10 @@ package main
 import (
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 
-	"strings"
-
-	"fmt"
-
+	"github.com/GabeMeister/vidfetcher/api"
 	"google.golang.org/api/googleapi/transport"
 	youtube "google.golang.org/api/youtube/v3"
 )
@@ -68,22 +66,23 @@ func FetchLatestVideoID(playlistID string) string {
 
 // FetchChannelUploadCount - Fetches the number of uploads of a channel
 //		channelID - id of the channel to fetch
-func FetchChannelUploadCount(waitGroup *sync.WaitGroup, channelID string) chan string {
+func FetchChannelUploadCount(waitGroup *sync.WaitGroup, youtubeID string) chan api.Channel {
 	waitGroup.Add(1)
 	defer waitGroup.Done()
 
-	ch := make(chan string)
+	ch := make(chan api.Channel)
 
 	go func() {
 		service := getYoutubeService()
-		call := service.Channels.List("snippet,statistics").Id(channelID)
+		call := service.Channels.List("snippet,statistics").Id(youtubeID)
 		response, err := call.Do()
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		for _, item := range response.Items {
-			ch <- fmt.Sprintf("Channel ID: %s, Vid Count: %d", item.Snippet.Title, item.Statistics.VideoCount)
+			youtubeChannel := api.Channel{Title: item.Snippet.Title, VideoCount: item.Statistics.VideoCount}
+			ch <- youtubeChannel
 		}
 
 		close(ch)
