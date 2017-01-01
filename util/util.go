@@ -1,43 +1,25 @@
-package main
+package util
 
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
-	"sync"
-
-	"github.com/GabeMeister/vidfetcher/api"
 )
 
-func pause() {
-	fmt.Println("here")
+// Pause pauses program execution for user
+func Pause() {
 	bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
 
-func merge(cs []chan api.Channel) <-chan api.Channel {
-	var wg sync.WaitGroup
-	out := make(chan api.Channel)
+// Here prints "Here."
+func Here() {
+	log.Println("Here.")
+}
 
-	// Start an output goroutine for each input channel in cs.  output
-	// copies values from c to out until c is closed, then calls wg.Done.
-	output := func(c <-chan api.Channel) {
-		for n := range c {
-			out <- n
-		}
-		wg.Done()
-	}
-	wg.Add(len(cs))
-	for _, c := range cs {
-		go output(c)
-	}
-
-	// Start a goroutine to close out once all the output goroutines are
-	// done.  This must start after the wg.Add call.
-	go func() {
-		wg.Wait()
-		close(out)
-	}()
-	return out
+// End prints the word "End." and ends program execution
+func End() {
+	log.Fatal("End.")
 }
 
 // ReadLines reads a whole file into memory
