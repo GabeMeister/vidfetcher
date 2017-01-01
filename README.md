@@ -14,14 +14,16 @@ Golang program to fetch YouTube video data to store in a Postgres database. This
 
 - For channels that don't have any uploads, we can ignore them.
 
+- Originally thought I would have "batch" channel fetches. So for 50 channels at a time, I would run the fetching, then when all 50 are up, I would start a new "batch" of 50 channels to fetch videos for. But [thanks to this StackOverflow answer](http://stackoverflow.com/a/25324090/1751481) I can do a "rolling" go routine fetch technique, where as soon as one go routine ends, another is started.
+
 ## Potential Ideas to Explore:
 
-- Instead of "waiting" to form one big slice of all channel data, just begin fetching videos of channels that are out of date
+- Instead of "waiting" to form one big slice of all channel data, just immediately begin fetching videos of channels that are out of date
 
 - Instead of reading every video from the api no matter what, check the video count in the database first, and only if different, begin fetching all videos from api
 
-## Open Questions:
+## Thoughts Log:
 
 - How to properly "print" data that you want to see, but not have to do extra work. For example, tasks.AreVideosOutOfDate() returns true if a channels videos are out of date, and false otherwise. This function must make a query to a database to check the video count for a channel. I want to be able to have the command line program print the video count in the database, and the video count retrieved through the api. Ideally, I only want to query the database once, because that's technically only what we need. 
 
-- Whether to pass just ids to functions, or pass objects that contain ids to functions.
+- Whether to pass just ids to functions, or pass objects that contain ids to functions. Overall just when to put things into objects that represent it, or just use the raw data.

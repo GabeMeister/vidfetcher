@@ -18,7 +18,7 @@ type YoutubeChannel struct {
 	VideoCount uint64
 }
 
-func (c YoutubeChannel) String() string {
+func (c *YoutubeChannel) String() string {
 	return fmt.Sprintf("%s: %d videos", c.Title, c.VideoCount)
 }
 
@@ -29,34 +29,6 @@ func (c *YoutubeChannel) JSONString() string {
 		log.Fatal("Unable to marshal youtube channel: ", c.String())
 	}
 	return string(bytes)
-}
-
-// MergeChannels merges several channels of Youtube Channels into one
-func MergeChannels(channelsToMerge []chan YoutubeChannel) <-chan YoutubeChannel {
-	out := make(chan YoutubeChannel)
-
-	// Start an output goroutine for each input channel in cs.  output
-	// copies values from c to out until c is closed, then calls wg.Done.
-	var waitGrp sync.WaitGroup
-	waitGrp.Add(len(channelsToMerge))
-
-	for _, currChan := range channelsToMerge {
-		go func(chanToRead <-chan YoutubeChannel) {
-			for n := range chanToRead {
-				out <- n
-			}
-			waitGrp.Done()
-		}(currChan)
-	}
-
-	// Start a goroutine to close out once all the output goroutines are
-	// done.  This must start after the wg.Add call.
-	go func() {
-		waitGrp.Wait()
-		close(out)
-	}()
-
-	return out
 }
 
 // FetchChannelData - Fetches the number of uploads of a channel
@@ -84,19 +56,6 @@ func FetchChannelData(waitGroup *sync.WaitGroup, youtubeIDs string) chan Youtube
 	}()
 
 	return ch
-}
-
-// WriteYoutubeChannelsToFile writes a slice of youtube channel objects to a file
-func WriteYoutubeChannelsToFile(channels []YoutubeChannel, filePath string) error {
-	var channelDataStrings []string
-
-	From(channels).
-		Select(func(x interface{}) interface{} {
-			return x.(YoutubeChannel).String()
-		}).
-		ToSlice(&channelDataStrings)
-
-	return util.WriteLines(channelDataStrings, filePath)
 }
 
 // FetchChannelUploadPlaylistIDs - Fetches Youtube video data from youtube video id
@@ -148,4 +107,62 @@ func FetchLatestVideoID(playlistID string) string {
 
 	return latestVideoID
 
+}
+
+// MergeChannels merges several channels of Youtube Channels into one
+func MergeChannels(channelsToMerge []chan YoutubeChannel) <-chan YoutubeChannel {
+	out := make(chan YoutubeChannel)
+
+	// Start an output goroutine for each input channel in cs.  output
+	// copies values from c to out until c is closed, then calls wg.Done.
+	var waitGrp sync.WaitGroup
+	waitGrp.Add(len(channelsToMerge))
+
+	for _, currChan := range channelsToMerge {
+		go func(chanToRead <-chan YoutubeChannel) {
+			for n := range chanToRead {
+				out <- n
+			}
+			waitGrp.Done()
+		}(currChan)
+	}
+
+	// Start a goroutine to close out once all the output goroutines are
+	// done.  This must start after the wg.Add call.
+	go func() {
+		waitGrp.Wait()
+		close(out)
+	}()
+
+	return out
+}
+
+// WriteYoutubeChannelsToFile writes a slice of youtube channel objects to a file
+func WriteYoutubeChannelsToFile(channels []YoutubeChannel, filePath string) error {
+	var channelDataStrings []string
+
+	From(channels).
+		Select(func(x interface{}) interface{} {
+			return x.(*YoutubeChannel).String()
+		}).
+		ToSlice(&channelDataStrings)
+
+	return util.WriteLines(channelDataStrings, filePath)
+}
+
+// GetYoutubeChannelsToFetch filters a slice of Youtube Channels to only include channels that
+// we want to fetch
+func GetYoutubeChannelsToFetch(channels []YoutubeChannel) []YoutubeChannel {
+	// Youtube channels to fetch have greater than one video upload
+	var sortedChannelData []YoutubeChannel
+	From(channels).
+		Where(func(x interface{}) bool {
+			return x.(YoutubeChannel).VideoCount > 0
+		}).
+		OrderByDescending(func(x interface{}) interface{} {
+			return x.(YoutubeChannel).VideoCount
+		}).
+		ToSlice(&sortedChannelData)
+
+	return sortedChannelData
 }
