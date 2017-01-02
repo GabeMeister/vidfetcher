@@ -16,6 +16,8 @@ Golang program to fetch YouTube video data to store in a Postgres database. This
 
 - Originally thought I would have "batch" channel fetches. So for 50 channels at a time, I would run the fetching, then when all 50 are up, I would start a new "batch" of 50 channels to fetch videos for. But [thanks to this StackOverflow answer](http://stackoverflow.com/a/25324090/1751481) I can do a "rolling" go routine fetch technique, where as soon as one go routine ends, another is started.
 
+- Kind of a no-brainer, but instead of checking the count(*) of videos that have a particular channel id, instead just check the VideoCount column in the Channels table
+
 ## Potential Ideas to Explore:
 
 - Instead of "waiting" to form one big slice of all channel data, just immediately begin fetching videos of channels that are out of date
@@ -27,3 +29,5 @@ Golang program to fetch YouTube video data to store in a Postgres database. This
 - How to properly "print" data that you want to see, but not have to do extra work. For example, tasks.AreVideosOutOfDate() returns true if a channels videos are out of date, and false otherwise. This function must make a query to a database to check the video count for a channel. I want to be able to have the command line program print the video count in the database, and the video count retrieved through the api. Ideally, I only want to query the database once, because that's technically only what we need. 
 
 - Whether to pass just ids to functions, or pass objects that contain ids to functions. Overall just when to put things into objects that represent it, or just use the raw data.
+
+- How much should the data access layer check before doing actions? Should a SelectVideoCountOfChannel() function check if the passed in Channel ID exists in the database, and if not, throw an exception? Should it just query anyway and just return 0 rows?

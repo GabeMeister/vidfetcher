@@ -51,9 +51,8 @@ func SelectChannelIDFromYoutubeID(youtubeDB *sql.DB, youtubeID string) int {
 
 // SelectVideoCountOfChannel gets the count of video uploads for a channel
 func SelectVideoCountOfChannel(youtubeDB *sql.DB, channelID int) uint64 {
-	rows, err := youtubeDB.Query(`select count(*) from videos where channelid=$1;`, channelID)
+	rows, err := youtubeDB.Query(`select VideoCount from Channels where ChannelID=$1;`, channelID)
 	if err != nil {
-		log.Println("Incorrect sql")
 		log.Fatal(err)
 	}
 	defer rows.Close()
