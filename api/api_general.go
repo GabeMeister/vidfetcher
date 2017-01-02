@@ -30,7 +30,8 @@ func GetBatchSize(arrSize int, index int, maxBatchSize int) int {
 	return batchSize
 }
 
-func getYoutubeService() *youtube.Service {
+// GetYoutubeService returns a youtube service to make api calls to
+func GetYoutubeService() *youtube.Service {
 	client := getYoutubeClient()
 	service, err := youtube.New(client)
 	if err != nil {

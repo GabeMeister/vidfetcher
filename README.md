@@ -18,6 +18,8 @@ Golang program to fetch YouTube video data to store in a Postgres database. This
 
 - Kind of a no-brainer, but instead of checking the count(*) of videos that have a particular channel id, instead just check the VideoCount column in the Channels table
 
+- Before, I was manually copying over all data that I cared about from the api calls. Now I'm just storing a reference to the youtube.Channel in my YoutubeChannel struct, and the attributes that I care about are just function getters.
+
 ## Potential Ideas to Explore:
 
 - Instead of "waiting" to form one big slice of all channel data, just immediately begin fetching videos of channels that are out of date

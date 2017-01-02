@@ -6,6 +6,7 @@ import (
 
 	// For postgres db
 
+	"github.com/GabeMeister/vidfetcher/youtubedata"
 	_ "github.com/lib/pq"
 )
 
@@ -17,13 +18,10 @@ func SelectAllChannelYoutubeIDs(youtubeDB *sql.DB) []string {
 
 // SelectChannelIdsFromYoutubeIDs selects the corresponding channel ids from a
 // slice of youtube ids
-func SelectChannelIdsFromYoutubeIDs(youtubeDB *sql.DB, youtubeIDs []string) []int {
-	var channelIDs []int
-	for _, youtubeID := range youtubeIDs {
-		channelIDs = append(channelIDs, SelectChannelIDFromYoutubeID(youtubeDB, youtubeID))
+func SelectChannelIdsFromYoutubeIDs(youtubeDB *sql.DB, channels []youtubedata.Channel) {
+	for _, channel := range channels {
+		channel.ChannelID = SelectChannelIDFromYoutubeID(youtubeDB, channel.YoutubeID())
 	}
-
-	return channelIDs
 }
 
 // SelectChannelIDFromYoutubeID selects the corresponding channel id from
@@ -47,6 +45,25 @@ func SelectChannelIDFromYoutubeID(youtubeDB *sql.DB, youtubeID string) int {
 	}
 
 	return channelID
+}
+
+// PopulateChannelIDFromYoutubeID sets the channel ID of a Channel from a Youtube ID
+func PopulateChannelIDFromYoutubeID(youtubeDB *sql.DB, channel *youtubedata.Channel) {
+	if channel.YoutubeID() == "" {
+		log.Fatal("Youtube ID cannot be blank")
+	}
+
+	rows, err := youtubeDB.Query("select ChannelID from Channels where YoutubeID=$1", channel.YoutubeID())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	rows.Next()
+
+	if err = rows.Scan(&channel.ChannelID); err != nil {
+		log.Fatal(err)
+	}
 }
 
 // SelectVideoCountOfChannel gets the count of video uploads for a channel

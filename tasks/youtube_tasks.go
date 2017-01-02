@@ -7,31 +7,32 @@ import (
 
 	"github.com/GabeMeister/vidfetcher/api"
 	"github.com/GabeMeister/vidfetcher/db"
+	"github.com/GabeMeister/vidfetcher/youtubedata"
 )
 
 const maxConcurrentGoRoutines = 50
 const maxAPIResults = 50
 
-// FetchAPIYoutubeChannelInfo fetches info from the Youtube API for the given youtube ids
-func FetchAPIYoutubeChannelInfo(youtubeIDs []string) []api.YoutubeChannel {
+// FetchYoutubeChannelInfoFromAPI fetches info from the Youtube API for the given youtube ids
+func FetchYoutubeChannelInfoFromAPI(youtubeIDs []string) []youtubedata.Channel {
 	var waitGroup sync.WaitGroup
 	youtubeIDBatches := api.BreakYoutubeIDsIntoBatches(youtubeIDs, maxAPIResults)
 
 	fmt.Println("Amount of api calls to make:", len(youtubeIDBatches))
 
-	var channelBatches []chan api.YoutubeChannel
+	var channelsInBatch []chan youtubedata.Channel
 	var count int
-	var youtubeChannelData []api.YoutubeChannel
+	var youtubeChannelData []youtubedata.Channel
 
 	for batchStart := 0; batchStart < len(youtubeIDBatches); batchStart += maxConcurrentGoRoutines {
-		channelBatches = nil
+		channelsInBatch = nil
 		batchSize := api.GetBatchSize(len(youtubeIDBatches), batchStart, maxConcurrentGoRoutines)
 
 		for batchIndex := batchStart; batchIndex < batchStart+batchSize; batchIndex++ {
-			ch := api.FetchChannelData(&waitGroup, youtubeIDBatches[batchIndex])
-			channelBatches = append(channelBatches, ch)
+			ch := youtubedata.FetchChannelDataFromAPI(&waitGroup, youtubeIDBatches[batchIndex])
+			channelsInBatch = append(channelsInBatch, ch)
 		}
-		mergedChannel := api.MergeChannels(channelBatches)
+		mergedChannel := youtubedata.MergeChannels(channelsInBatch)
 
 		for item := range mergedChannel {
 			count++
@@ -46,7 +47,7 @@ func FetchAPIYoutubeChannelInfo(youtubeIDs []string) []api.YoutubeChannel {
 }
 
 // FetchAllVideosForChannel fetches all the video uploads of the receiver Youtube Channel
-func FetchAllVideosForChannel(youtubeDB *sql.DB, youtubeChannel *api.YoutubeChannel) {
+func FetchAllVideosForChannel(youtubeDB *sql.DB, youtubeChannel *youtubedata.Channel) {
 	fmt.Println("The following channels are out of date: ")
 	if AreVideosOutOfDate(youtubeDB, youtubeChannel) {
 		fmt.Println(youtubeChannel.String())
@@ -54,18 +55,21 @@ func FetchAllVideosForChannel(youtubeDB *sql.DB, youtubeChannel *api.YoutubeChan
 }
 
 // AreVideosOutOfDate determines if there needs to be new videos fetched for a particular channel
-func AreVideosOutOfDate(youtubeDB *sql.DB, youtubeChannel *api.YoutubeChannel) bool {
+func AreVideosOutOfDate(youtubeDB *sql.DB, channel *youtubedata.Channel) bool {
 	// Get channel id from youtube id
-	id := db.SelectChannelIDFromYoutubeID(youtubeDB, youtubeChannel.YoutubeID)
+	if channel.ChannelID == 0 {
+		db.PopulateChannelIDFromYoutubeID(youtubeDB, channel)
+	}
 
-	// Compare to YoutubeChannel object
-	videoCountDB := db.SelectVideoCountOfChannel(youtubeDB, id)
+	// Get count from database
+	dbVideoCount := db.SelectVideoCountOfChannel(youtubeDB, channel.ChannelID)
+	apiVideoCount := channel.VideoCount()
 
 	// Video counts are out of date if the count from the database
 	// doesn't match the count from the api
-	isOutOfDate := videoCountDB != youtubeChannel.VideoCount
+	isOutOfDate := (dbVideoCount != apiVideoCount)
 	if isOutOfDate {
-		fmt.Printf("'%s' out of date. DB: %d API: %d\n", youtubeChannel.Title, videoCountDB, youtubeChannel.VideoCount)
+		fmt.Printf("'%s' out of date. DB: %d API: %d\n", channel.Title(), dbVideoCount, apiVideoCount)
 	}
 
 	return isOutOfDate
