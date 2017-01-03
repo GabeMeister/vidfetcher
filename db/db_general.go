@@ -55,3 +55,14 @@ func SelectColumnFromTable(youtubeDB *sql.DB, column string, table string, maxRo
 
 	return results
 }
+
+// GeneratePlaceHolders generates a comma separated list of postgres place holders
+// i.e. $1, $2, $3
+func GeneratePlaceHolders(count int) string {
+	placeholders := make([]string, count)
+	for i := 0; i < count; i++ {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+	}
+
+	return strings.Join(placeholders, ",")
+}

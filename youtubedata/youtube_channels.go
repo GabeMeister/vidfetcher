@@ -8,8 +8,6 @@ import (
 
 	youtube "google.golang.org/api/youtube/v3"
 
-	"sort"
-
 	"github.com/GabeMeister/vidfetcher/api"
 	"github.com/GabeMeister/vidfetcher/util"
 )
@@ -55,6 +53,12 @@ func (c *Channel) VideoCount() uint64 {
 		log.Fatalln("apiChannel is nil")
 	}
 	return c.apiChannel.Statistics.VideoCount
+}
+
+// IsChannelIDPopulated checks if this Youtube channel has had
+// its channel id populated with what is in the database
+func (c *Channel) IsChannelIDPopulated() bool {
+	return c.ChannelID > 0
 }
 
 // ChannelsByDescendingVideoCount represents a slice of Youtube Channels
@@ -137,18 +141,17 @@ func WriteYoutubeChannelsToFile(channels []Channel, filePath string) error {
 	return util.WriteLines(channelDataStrings, filePath)
 }
 
-// GetYoutubeChannelsToFetch filters a slice of Youtube Channels to only include channels that
-// we want to fetch
-func GetYoutubeChannelsToFetch(channels []Channel) []Channel {
-	var sortedChannels ChannelsByDescendingVideoCount
+// GetOnlyChannelsWithVideos filters out all channels in the slice that
+// don't have any videos, and returns a new channel slice that contains
+// only channels with videos
+func GetOnlyChannelsWithVideos(channels []Channel) []Channel {
+	var channelsWithVideos []Channel
 
-	for _, channel := range channels {
-		if channel.VideoCount() > 0 {
-			// Deep copy channel data into new slice
-			sortedChannels = append(sortedChannels, channel)
+	for i := range channels {
+		if channels[i].VideoCount() > 0 {
+			channelsWithVideos = append(channelsWithVideos, channels[i])
 		}
 	}
 
-	sort.Sort(sortedChannels)
-	return sortedChannels
+	return channelsWithVideos
 }

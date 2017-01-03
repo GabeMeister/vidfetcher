@@ -33,3 +33,7 @@ Golang program to fetch YouTube video data to store in a Postgres database. This
 - Whether to pass just ids to functions, or pass objects that contain ids to functions. Overall just when to put things into objects that represent it, or just use the raw data.
 
 - How much should the data access layer check before doing actions? Should a SelectVideoCountOfChannel() function check if the passed in Channel ID exists in the database, and if not, throw an exception? Should it just query anyway and just return 0 rows?
+
+- For every task, there seems to be a balance that you have to strike between what data you know "beforehand" vs. what work you do "while you go". For instance, I could calculate the total number of channels that are out of date, or I could instead just iterate through all the channels, and check if each (one at a time) is out of date, and then immediately start fetching videos, and just keep track of the count as you go. One way takes longer initially to start fetching videos, but gives the amount of work that the video fetcher is about to do. The other more quickly starts fetching videos, but you don't get to see how much work it has to do until it has completed it.
+
+- Took a while to learn that there's an ANY keyword in postgres that needs to be used in order to add Go slices to sql parameters
