@@ -6,16 +6,22 @@ import (
 
 	"github.com/GabeMeister/vidfetcher/youtubedata"
 	// For postgres db
+	"strings"
+
 	"github.com/lib/pq"
 )
 
 // PopulateChannelIDsFromYoutubeIDs selects the corresponding channel ids from a
 // slice of youtube ids
 func PopulateChannelIDsFromYoutubeIDs(youtubeDB *sql.DB, channels []youtubedata.Channel) {
+	youtubeIDs := make([]string, len(channels))
 	for i := range channels {
-		if !channels[i].IsChannelIDPopulated() {
-			channels[i].ChannelID = SelectChannelIDFromYoutubeID(youtubeDB, channels[i].YoutubeID())
-		}
+		youtubeIDs[i] = channels[i].YoutubeID()
+	}
+
+	channelIDMap := SelectChannelIDsFromYoutubeIDs(youtubeDB, youtubeIDs)
+	for i := range channels {
+		channels[i].ChannelID = channelIDMap[channels[i].YoutubeID()]
 	}
 }
 
@@ -42,6 +48,30 @@ func PopulateChannelIDFromYoutubeID(youtubeDB *sql.DB, channel *youtubedata.Chan
 func SelectAllChannelYoutubeIDs(youtubeDB *sql.DB) []string {
 	// TODO: Remove the 250 video count limit
 	return SelectColumnFromTable(youtubeDB, "YoutubeID", "Channels", 50)
+}
+
+// SelectChannelIDsFromYoutubeIDs does a batch select of channel ids for the given youtube channels
+func SelectChannelIDsFromYoutubeIDs(youtubeDB *sql.DB, youtubeIDs []string) map[string]int {
+	rows, err := youtubeDB.Query(`select ChannelID, YoutubeID from Channels where YoutubeID = ANY($1);`, pq.Array(youtubeIDs))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	channelIDMap := make(map[string]int)
+	for rows.Next() {
+		var channelID int
+		var youtubeID string
+
+		err := rows.Scan(&channelID, &youtubeID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		channelIDMap[strings.TrimSpace(youtubeID)] = channelID
+	}
+
+	return channelIDMap
 }
 
 // SelectChannelIDFromYoutubeID selects the corresponding channel id from
@@ -111,6 +141,7 @@ func getChannelIDToVideoCountMap(youtubeDB *sql.DB, channels []youtubedata.Chann
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 
 	videoCountMap := make(map[int]uint64)
 	for rows.Next() {
