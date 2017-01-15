@@ -6,6 +6,10 @@ import (
 	"sort"
 	"sync"
 
+	youtube "google.golang.org/api/youtube/v3"
+
+	"strings"
+
 	"github.com/GabeMeister/vidfetcher/api"
 	"github.com/GabeMeister/vidfetcher/db"
 	"github.com/GabeMeister/vidfetcher/youtubedata"
@@ -47,9 +51,78 @@ func FetchYoutubeChannelInfoFromAPI(youtubeIDs []string) []youtubedata.Channel {
 	return youtubeChannelData
 }
 
-// FetchAllVideosForChannel fetches all the video uploads for the specified youtube channel
-func FetchAllVideosForChannel(youtubeDB *sql.DB, youtubeChannel *youtubedata.Channel) {
-	// TODO
+// FetchNewVideosForChannels fetches any new videos for youtubeChannels, and stores them
+// in youtubeDB
+func FetchNewVideosForChannels(youtubeDB *sql.DB, youtubeChannels []youtubedata.Channel) {
+	numGoRoutines := getChannelGoRoutineCount(youtubeChannels)
+
+	var wg sync.WaitGroup
+	wg.Add(numGoRoutines)
+
+	// Loop to create all the go routines, all reading off of 1 channel
+	ch := make(chan youtubedata.Channel)
+	for i := 0; i < numGoRoutines; i++ {
+		go func() {
+			for {
+				youtubeChannel, ok := <-ch
+				if !ok {
+					wg.Done()
+					return
+				}
+
+				playlistItemsToFetch := FetchNewVideosForChannel(youtubeDB, &youtubeChannel)
+				fmt.Printf("%s: %d vids to fetch\n", youtubeChannel.Title(), len(playlistItemsToFetch))
+
+				// Fetch video info from playlist item
+				// videosToInsert := youtubedata.FetchVideoInfo(playlistItemsToFetch)
+
+				// Insert videos into database
+				// db.InsertVideos(youtubeDB, videosToInsert)
+			}
+		}()
+	}
+
+	// Loop to send youtube channels down the channel
+	for i := range youtubeChannels {
+		ch <- youtubeChannels[i]
+	}
+
+	close(ch)
+	wg.Wait()
+}
+
+// FetchNewVideosForChannel fetches all the new video uploads for the specified youtube channel
+// It will stop fetching when it has fetched a video whose YoutubeID already exists in the database
+func FetchNewVideosForChannel(youtubeDB *sql.DB, youtubeChannel *youtubedata.Channel) []youtubedata.PlaylistItem {
+	channelID := db.SelectChannelIDFromYoutubeID(youtubeDB, youtubeChannel.YoutubeID())
+
+	// Get a map of all youtube video ids that exist for the channel in the database
+	videoMap := db.GetVideoMapForChannel(youtubeDB, channelID)
+
+	playlistItemsToFetch := []youtubedata.PlaylistItem{}
+
+	// Fetch videos up to 50 at a time from api
+	var response *youtube.PlaylistItemListResponse
+
+	pageToken := " "
+	doneFetching := false
+	for pageToken != "" && !doneFetching {
+		response = youtubedata.FetchChannelUploads(youtubeChannel, strings.TrimSpace(pageToken))
+		pageToken = response.NextPageToken
+
+		for _, playlistItem := range response.Items {
+			videoID := playlistItem.Snippet.ResourceId.VideoId
+			_, exists := videoMap[videoID]
+			if exists {
+				doneFetching = true
+				break
+			}
+
+			playlistItemsToFetch = append(playlistItemsToFetch, youtubedata.PlaylistItem{APIPlaylistItem: playlistItem})
+		}
+	}
+
+	return playlistItemsToFetch
 }
 
 // GetOutOfDateChannels returns a slice that contains only youtube channels that are
@@ -91,4 +164,12 @@ func AreVideosOutOfDate(youtubeDB *sql.DB, channel *youtubedata.Channel) bool {
 	}
 
 	return isOutOfDate
+}
+
+func getChannelGoRoutineCount(youtubeChannels []youtubedata.Channel) int {
+	if len(youtubeChannels) < maxConcurrentGoRoutines {
+		return len(youtubeChannels)
+	}
+
+	return maxConcurrentGoRoutines
 }

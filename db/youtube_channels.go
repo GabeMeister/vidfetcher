@@ -3,11 +3,10 @@ package db
 import (
 	"database/sql"
 	"log"
+	"strings"
 
 	"github.com/GabeMeister/vidfetcher/youtubedata"
 	// For postgres db
-	"strings"
-
 	"github.com/lib/pq"
 )
 
@@ -47,7 +46,7 @@ func PopulateChannelIDFromYoutubeID(youtubeDB *sql.DB, channel *youtubedata.Chan
 // SelectAllChannelYoutubeIDs fetches all channel
 func SelectAllChannelYoutubeIDs(youtubeDB *sql.DB) []string {
 	// TODO: Remove the 250 video count limit
-	return SelectColumnFromTable(youtubeDB, "YoutubeID", "Channels", 50)
+	return SelectColumnFromTable(youtubeDB, "YoutubeID", "Channels", 100)
 }
 
 // SelectChannelIDsFromYoutubeIDs does a batch select of channel ids for the given youtube channels
@@ -97,6 +96,22 @@ func SelectChannelIDFromYoutubeID(youtubeDB *sql.DB, youtubeID string) int {
 	return channelID
 }
 
+// SelectChannelUploadsPlaylistID selects the uploads playlist id of the channel
+// with id of channelID
+func SelectChannelUploadsPlaylistID(youtubeDB *sql.DB, channelID int) string {
+	rows, err := youtubeDB.Query("select UploadPlaylist from Channels where ChannelID=$1", channelID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	uploadsPlaylistID := ""
+	if rows.Next() {
+		rows.Scan(&uploadsPlaylistID)
+	}
+
+	return uploadsPlaylistID
+}
+
 // SelectVideoCountOfChannel gets the count of video uploads for a channel
 func SelectVideoCountOfChannel(youtubeDB *sql.DB, channelID int) uint64 {
 	rows, err := youtubeDB.Query(`select VideoCount from Channels where ChannelID=$1;`, channelID)
@@ -128,6 +143,18 @@ func GetOutOfDateChannels(youtubeDB *sql.DB, channels []youtubedata.Channel) []y
 	}
 
 	return outOfDateChannels
+}
+
+// GetVideoMapForChannel returns a map of video ids for the specified channel Youtube ID
+func GetVideoMapForChannel(youtubeDB *sql.DB, channelID int) map[string]bool {
+	youtubeIDs := SelectVideoYoutubeIDsMatchingChannelID(youtubeDB, channelID)
+
+	youtubeIDMap := make(map[string]bool)
+	for _, id := range youtubeIDs {
+		youtubeIDMap[id] = true
+	}
+
+	return youtubeIDMap
 }
 
 // getChannelIDToVideoCountMap creates a map of channel ids to video counts for the specified channels

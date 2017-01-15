@@ -12,17 +12,17 @@ import (
 	"github.com/GabeMeister/vidfetcher/util"
 )
 
-// Channel contains data for a YouTube channel
+// Channel contains YouTube channel data
 type Channel struct {
 	apiChannel *youtube.Channel
 	ChannelID  int
 }
 
 func (c *Channel) String() string {
-	return fmt.Sprintf("%s: %d videos", c.Title(), c.VideoCount())
+	return fmt.Sprintf("%d %s %s: %d videos", c.ChannelID, c.YoutubeID(), c.Title(), c.VideoCount())
 }
 
-// JSONString returns the json encoding of the YoutubeChannel object
+// JSONString returns the json encoding of the youtubedata.Channel object
 func (c *Channel) JSONString() string {
 	bytes, err := json.Marshal(c)
 	if err != nil {
@@ -55,6 +55,15 @@ func (c *Channel) VideoCount() uint64 {
 	return c.apiChannel.Statistics.VideoCount
 }
 
+// UploadsPlaylistID returns the youtube id of the uploads playlist for the channel
+func (c *Channel) UploadsPlaylistID() string {
+	if c.apiChannel == nil || c.apiChannel.ContentDetails == nil {
+		log.Fatalln("channel does not have content details to fetch uploads playlist id")
+	}
+
+	return c.apiChannel.ContentDetails.RelatedPlaylists.Uploads
+}
+
 // IsChannelIDPopulated checks if this Youtube channel has had
 // its channel id populated with what is in the database
 func (c *Channel) IsChannelIDPopulated() bool {
@@ -78,6 +87,7 @@ func (c ChannelsByDescendingVideoCount) Swap(i, j int) {
 }
 
 // FetchChannelDataFromAPI - Fetches the number of uploads of a channel
+// TODO: move this into api package, and change go routine strategy from fan in to bounded parallelism
 func FetchChannelDataFromAPI(waitGroup *sync.WaitGroup, youtubeIDCommaText string) chan Channel {
 	waitGroup.Add(1)
 	defer waitGroup.Done()
@@ -86,7 +96,7 @@ func FetchChannelDataFromAPI(waitGroup *sync.WaitGroup, youtubeIDCommaText strin
 
 	go func() {
 		service := api.GetYoutubeService()
-		call := service.Channels.List("snippet,statistics").Id(youtubeIDCommaText)
+		call := service.Channels.List("snippet,statistics,contentDetails").Id(youtubeIDCommaText)
 		response, err := call.Do()
 		if err != nil {
 			log.Fatal(err)
