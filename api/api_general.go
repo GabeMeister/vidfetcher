@@ -9,6 +9,14 @@ import (
 	youtube "google.golang.org/api/youtube/v3"
 )
 
+// MaxConcurrentGoRoutines is the maximum allowable number of go routines
+// that are allowed during functions using bounded parallelism
+const MaxConcurrentGoRoutines = 50
+
+// MaxAPIResults is the maximum amount of results allowed to ask for in
+// a call to the Youtube API
+const MaxAPIResults = 50
+
 // DeveloperKey is the id used to make youtube api calls
 const DeveloperKey = "AIzaSyC9uXxwF4PxYilaOvPTDLdXAnToBwFvXcs"
 

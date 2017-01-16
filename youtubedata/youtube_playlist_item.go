@@ -3,7 +3,6 @@ package youtubedata
 import (
 	"log"
 
-	"github.com/GabeMeister/vidfetcher/api"
 	youtube "google.golang.org/api/youtube/v3"
 )
 
@@ -12,20 +11,11 @@ type PlaylistItem struct {
 	APIPlaylistItem *youtube.PlaylistItem
 }
 
-// FetchChannelUploads fetches up to 50 videos of a channel and returns
-// the response
-func FetchChannelUploads(youtubeChannel *Channel, pageToken string) *youtube.PlaylistItemListResponse {
-	service := api.GetYoutubeService()
-	call := service.PlaylistItems.
-		List("snippet").
-		PlaylistId(youtubeChannel.UploadsPlaylistID()).
-		PageToken(pageToken).
-		MaxResults(50)
-
-	response, err := call.Do()
-	if err != nil {
-		log.Fatal(err)
+// YoutubeID is the youtube id of the video for the playlist item
+func (p *PlaylistItem) YoutubeID() string {
+	if p.APIPlaylistItem == nil || p.APIPlaylistItem.Snippet == nil {
+		log.Fatalln("playlist item is nil or doesn't contain snippet, cannot get youtube id")
 	}
 
-	return response
+	return p.APIPlaylistItem.Snippet.ResourceId.VideoId
 }

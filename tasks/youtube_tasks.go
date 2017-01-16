@@ -3,25 +3,22 @@ package tasks
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"sort"
+	"strings"
 	"sync"
 
 	youtube "google.golang.org/api/youtube/v3"
-
-	"strings"
 
 	"github.com/GabeMeister/vidfetcher/api"
 	"github.com/GabeMeister/vidfetcher/db"
 	"github.com/GabeMeister/vidfetcher/youtubedata"
 )
 
-const maxConcurrentGoRoutines = 50
-const maxAPIResults = 50
-
 // FetchYoutubeChannelInfoFromAPI fetches info from the Youtube API for the given youtube ids
 func FetchYoutubeChannelInfoFromAPI(youtubeIDs []string) []youtubedata.Channel {
 	var waitGroup sync.WaitGroup
-	youtubeIDBatches := api.BreakYoutubeIDsIntoBatches(youtubeIDs, maxAPIResults)
+	youtubeIDBatches := api.BreakYoutubeIDsIntoBatches(youtubeIDs, api.MaxAPIResults)
 
 	fmt.Println("api calls to make:", len(youtubeIDBatches))
 
@@ -29,12 +26,12 @@ func FetchYoutubeChannelInfoFromAPI(youtubeIDs []string) []youtubedata.Channel {
 	var count int
 	var youtubeChannelData []youtubedata.Channel
 
-	for batchStart := 0; batchStart < len(youtubeIDBatches); batchStart += maxConcurrentGoRoutines {
+	for batchStart := 0; batchStart < len(youtubeIDBatches); batchStart += api.MaxConcurrentGoRoutines {
 		channelsInBatch = nil
-		batchSize := api.GetBatchSize(len(youtubeIDBatches), batchStart, maxConcurrentGoRoutines)
+		batchSize := api.GetBatchSize(len(youtubeIDBatches), batchStart, api.MaxConcurrentGoRoutines)
 
 		for batchIndex := batchStart; batchIndex < batchStart+batchSize; batchIndex++ {
-			ch := youtubedata.FetchChannelDataFromAPI(&waitGroup, youtubeIDBatches[batchIndex])
+			ch := api.FetchChannelDataFromAPI(&waitGroup, youtubeIDBatches[batchIndex])
 			channelsInBatch = append(channelsInBatch, ch)
 		}
 		mergedChannel := youtubedata.MergeChannels(channelsInBatch)
@@ -70,14 +67,16 @@ func FetchNewVideosForChannels(youtubeDB *sql.DB, youtubeChannels []youtubedata.
 					return
 				}
 
-				playlistItemsToFetch := FetchNewVideosForChannel(youtubeDB, &youtubeChannel)
-				fmt.Printf("%s: %d vids to fetch\n", youtubeChannel.Title(), len(playlistItemsToFetch))
+				playlistItemsToFetch := FetchNewUploadsForChannel(youtubeDB, &youtubeChannel)
+
+				// Create a slice of youtube ids from the playlist items
+				youtubeIDs := api.GetYoutubeIDsFromPlaylistItems(playlistItemsToFetch)
 
 				// Fetch video info from playlist item
-				// videosToInsert := youtubedata.FetchVideoInfo(playlistItemsToFetch)
+				videosToInsert := api.FetchVideoInfo(youtubeIDs, &youtubeChannel)
 
 				// Insert videos into database
-				// db.InsertVideos(youtubeDB, videosToInsert)
+				db.InsertVideos(youtubeDB, videosToInsert)
 			}
 		}()
 	}
@@ -91,9 +90,9 @@ func FetchNewVideosForChannels(youtubeDB *sql.DB, youtubeChannels []youtubedata.
 	wg.Wait()
 }
 
-// FetchNewVideosForChannel fetches all the new video uploads for the specified youtube channel
+// FetchNewUploadsForChannel fetches all the new video uploads for the specified youtube channel
 // It will stop fetching when it has fetched a video whose YoutubeID already exists in the database
-func FetchNewVideosForChannel(youtubeDB *sql.DB, youtubeChannel *youtubedata.Channel) []youtubedata.PlaylistItem {
+func FetchNewUploadsForChannel(youtubeDB *sql.DB, youtubeChannel *youtubedata.Channel) []youtubedata.PlaylistItem {
 	channelID := db.SelectChannelIDFromYoutubeID(youtubeDB, youtubeChannel.YoutubeID())
 
 	// Get a map of all youtube video ids that exist for the channel in the database
@@ -107,7 +106,8 @@ func FetchNewVideosForChannel(youtubeDB *sql.DB, youtubeChannel *youtubedata.Cha
 	pageToken := " "
 	doneFetching := false
 	for pageToken != "" && !doneFetching {
-		response = youtubedata.FetchChannelUploads(youtubeChannel, strings.TrimSpace(pageToken))
+		log.Printf("Fetching new uploads for %s with %s page token\n", youtubeChannel.Title(), pageToken)
+		response = api.FetchChannelUploads(youtubeChannel, strings.TrimSpace(pageToken))
 		pageToken = response.NextPageToken
 
 		for _, playlistItem := range response.Items {
@@ -167,9 +167,9 @@ func AreVideosOutOfDate(youtubeDB *sql.DB, channel *youtubedata.Channel) bool {
 }
 
 func getChannelGoRoutineCount(youtubeChannels []youtubedata.Channel) int {
-	if len(youtubeChannels) < maxConcurrentGoRoutines {
+	if len(youtubeChannels) < api.MaxConcurrentGoRoutines {
 		return len(youtubeChannels)
 	}
 
-	return maxConcurrentGoRoutines
+	return api.MaxConcurrentGoRoutines
 }

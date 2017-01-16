@@ -45,8 +45,8 @@ func PopulateChannelIDFromYoutubeID(youtubeDB *sql.DB, channel *youtubedata.Chan
 
 // SelectAllChannelYoutubeIDs fetches all channel
 func SelectAllChannelYoutubeIDs(youtubeDB *sql.DB) []string {
-	// TODO: Remove the 250 video count limit
-	return SelectColumnFromTable(youtubeDB, "YoutubeID", "Channels", 100)
+	// TODO: Remove the vid count limit
+	return SelectColumnFromTable(youtubeDB, "YoutubeID", "Channels", 200)
 }
 
 // SelectChannelIDsFromYoutubeIDs does a batch select of channel ids for the given youtube channels

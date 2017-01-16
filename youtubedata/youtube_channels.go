@@ -8,13 +8,12 @@ import (
 
 	youtube "google.golang.org/api/youtube/v3"
 
-	"github.com/GabeMeister/vidfetcher/api"
 	"github.com/GabeMeister/vidfetcher/util"
 )
 
 // Channel contains YouTube channel data
 type Channel struct {
-	apiChannel *youtube.Channel
+	APIChannel *youtube.Channel
 	ChannelID  int
 }
 
@@ -33,35 +32,35 @@ func (c *Channel) JSONString() string {
 
 // Title is the title of the channel
 func (c *Channel) Title() string {
-	if c.apiChannel == nil || c.apiChannel.Snippet == nil {
-		log.Fatalln("apiChannel is nil")
+	if c.APIChannel == nil || c.APIChannel.Snippet == nil {
+		log.Fatalln("APIChannel is nil")
 	}
-	return c.apiChannel.Snippet.Title
+	return c.APIChannel.Snippet.Title
 }
 
 // YoutubeID is the channels 32 character id string recognized by Youtube
 func (c *Channel) YoutubeID() string {
-	if c.apiChannel == nil {
-		log.Fatalln("apiChannel is nil")
+	if c.APIChannel == nil {
+		log.Fatalln("APIChannel is nil")
 	}
-	return c.apiChannel.Id
+	return c.APIChannel.Id
 }
 
 // VideoCount is the video upload count of the channel
 func (c *Channel) VideoCount() uint64 {
-	if c.apiChannel == nil || c.apiChannel.Statistics == nil {
-		log.Fatalln("apiChannel is nil")
+	if c.APIChannel == nil || c.APIChannel.Statistics == nil {
+		log.Fatalln("APIChannel is nil")
 	}
-	return c.apiChannel.Statistics.VideoCount
+	return c.APIChannel.Statistics.VideoCount
 }
 
 // UploadsPlaylistID returns the youtube id of the uploads playlist for the channel
 func (c *Channel) UploadsPlaylistID() string {
-	if c.apiChannel == nil || c.apiChannel.ContentDetails == nil {
+	if c.APIChannel == nil || c.APIChannel.ContentDetails == nil {
 		log.Fatalln("channel does not have content details to fetch uploads playlist id")
 	}
 
-	return c.apiChannel.ContentDetails.RelatedPlaylists.Uploads
+	return c.APIChannel.ContentDetails.RelatedPlaylists.Uploads
 }
 
 // IsChannelIDPopulated checks if this Youtube channel has had
@@ -84,33 +83,6 @@ func (c ChannelsByDescendingVideoCount) Less(i, j int) bool {
 
 func (c ChannelsByDescendingVideoCount) Swap(i, j int) {
 	c[i], c[j] = c[j], c[i]
-}
-
-// FetchChannelDataFromAPI - Fetches the number of uploads of a channel
-// TODO: move this into api package, and change go routine strategy from fan in to bounded parallelism
-func FetchChannelDataFromAPI(waitGroup *sync.WaitGroup, youtubeIDCommaText string) chan Channel {
-	waitGroup.Add(1)
-	defer waitGroup.Done()
-
-	ch := make(chan Channel)
-
-	go func() {
-		service := api.GetYoutubeService()
-		call := service.Channels.List("snippet,statistics,contentDetails").Id(youtubeIDCommaText)
-		response, err := call.Do()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for _, item := range response.Items {
-			youtubeChannel := Channel{apiChannel: item}
-			ch <- youtubeChannel
-		}
-
-		close(ch)
-	}()
-
-	return ch
 }
 
 // MergeChannels merges several channels of Youtube Channels into one
