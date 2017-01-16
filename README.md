@@ -20,6 +20,8 @@ Golang program to fetch YouTube video data to store in a Postgres database. This
 
 - Before, I was manually copying over all data that I cared about from the api calls. Now I'm just storing a reference to the youtube.Channel in my YoutubeChannel struct, and the attributes that I care about are just function getters.
 
+- Using "bounded parallelism" seems to be a lot simpler and easier to do than the "fan in" strategy that I initially used. It's a simpler concept: start a bunch of go routines that all read off of the same channel, and then push all your stuff "down" the channel. The fan in strategy is a lot more involved, with creating a go routine for each item or "batch" of asynchronous tasks you want to perform. 
+
 ## Potential Ideas to Explore:
 
 - Instead of "waiting" to form one big slice of all channel data, just immediately begin fetching videos of channels that are out of date
@@ -37,3 +39,5 @@ Golang program to fetch YouTube video data to store in a Postgres database. This
 - For every task, there seems to be a balance that you have to strike between what data you know "beforehand" vs. what work you do "while you go". For instance, I could calculate the total number of channels that are out of date, or I could instead just iterate through all the channels, and check if each (one at a time) is out of date, and then immediately start fetching videos, and just keep track of the count as you go. One way takes longer initially to start fetching videos, but gives the amount of work that the video fetcher is about to do. The other more quickly starts fetching videos, but you don't get to see how much work it has to do until it has completed it.
 
 - Took a while to learn that there's an ANY keyword in postgres that needs to be used in order to add Go slices to sql parameters
+
+- Things seem to "slow down" after about 10 min running the fetcher, I might try separate youtube database instances
