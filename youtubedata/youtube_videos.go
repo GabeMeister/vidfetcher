@@ -38,7 +38,11 @@ func (v *Video) Title() string {
 	if !v.snippetExists() {
 		log.Fatalln("APIVideo's snippet is nil, cannot access video title")
 	}
-	return v.APIVideo.Snippet.Title
+	title := v.APIVideo.Snippet.Title
+	if len(title) > 150 {
+		title = title[:150]
+	}
+	return title
 }
 
 // YoutubeID is the video's 32 character id string recognized by Youtube
