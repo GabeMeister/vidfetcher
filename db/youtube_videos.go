@@ -42,21 +42,25 @@ func InsertVideo(youtubeDB *sql.DB, video youtubedata.Video) {
 
 	stmt, err := youtubeDB.Prepare("insert into Videos (YoutubeID,ChannelID,Title,Thumbnail,Duration,ViewCount,PublishedAt) values ($1,$2,$3,$4,$5,$6,$7)")
 	if err != nil {
-		log.Fatalln(err)
+		log.Printf("Skipped inserting %s, %v\n", video.Title(), err)
+		return
 	}
 
 	result, err := stmt.Exec(video.YoutubeID(), video.ChannelID, video.Title(), video.Thumbnail(), video.Duration(), video.ViewCount(), video.PublishedAt())
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Skipped inserting %s, %v\n", video.Title(), err)
+		return
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		log.Fatalln(err)
+		log.Printf("Skipped inserting %s, %v\n", video.Title(), err)
+		return
 	}
 
 	if rowsAffected < 1 {
-		log.Fatalln("less than 1 row affected for %s %s", video.YoutubeID(), video.Title)
+		log.Printf("Rows affected < 1 for %s", video.Title())
+		return
 	}
 
 }

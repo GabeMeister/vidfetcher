@@ -18,7 +18,7 @@ func main() {
 	channels := tasks.FetchYoutubeChannelInfoFromAPI(youtubeIDs)
 	channelsToFetch := tasks.GetOutOfDateChannels(youtubeDB, channels)
 	log.Println(len(channelsToFetch), "are out of date")
-	tasks.FetchNewVideosForChannels(youtubeDB, channelsToFetch)
+	tasks.FetchNewVideosForChannels(channelsToFetch)
 
 	// channel := tasks.FetchYoutubeChannelInfoFromAPI([]string{youtubeID})[0]
 	// playlistItems := tasks.FetchNewVideosForChannel(youtubeDB, &channel)

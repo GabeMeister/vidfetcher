@@ -26,9 +26,9 @@ func FetchYoutubeChannelInfoFromAPI(youtubeIDs []string) []youtubedata.Channel {
 	var count int
 	var youtubeChannelData []youtubedata.Channel
 
-	for batchStart := 0; batchStart < len(youtubeIDBatches); batchStart += api.MaxConcurrentGoRoutines {
+	for batchStart := 0; batchStart < len(youtubeIDBatches); batchStart += api.MaxAPIGoRoutines {
 		channelsInBatch = nil
-		batchSize := api.GetBatchSize(len(youtubeIDBatches), batchStart, api.MaxConcurrentGoRoutines)
+		batchSize := api.GetBatchSize(len(youtubeIDBatches), batchStart, api.MaxAPIGoRoutines)
 
 		for batchIndex := batchStart; batchIndex < batchStart+batchSize; batchIndex++ {
 			ch := api.FetchChannelDataFromAPI(&waitGroup, youtubeIDBatches[batchIndex])
@@ -50,7 +50,7 @@ func FetchYoutubeChannelInfoFromAPI(youtubeIDs []string) []youtubedata.Channel {
 
 // FetchNewVideosForChannels fetches any new videos for youtubeChannels, and stores them
 // in youtubeDB
-func FetchNewVideosForChannels(youtubeDB *sql.DB, youtubeChannels []youtubedata.Channel) {
+func FetchNewVideosForChannels(youtubeChannels []youtubedata.Channel) {
 	numGoRoutines := getChannelGoRoutineCount(youtubeChannels)
 
 	var wg sync.WaitGroup
@@ -60,6 +60,9 @@ func FetchNewVideosForChannels(youtubeDB *sql.DB, youtubeChannels []youtubedata.
 	ch := make(chan youtubedata.Channel)
 	for i := 0; i < numGoRoutines; i++ {
 		go func() {
+			// Each go routine will use it's own separate database instance
+			youtubeDB := db.CreateDBInstance()
+
 			for {
 				youtubeChannel, ok := <-ch
 				if !ok {
@@ -106,7 +109,7 @@ func FetchNewUploadsForChannel(youtubeDB *sql.DB, youtubeChannel *youtubedata.Ch
 	pageToken := " "
 	doneFetching := false
 	for pageToken != "" && !doneFetching {
-		log.Printf("Fetching new uploads for %s with %s page token\n", youtubeChannel.Title(), pageToken)
+		log.Printf("New uploads for %s with %s page token\n", youtubeChannel.Title(), pageToken)
 		response = api.FetchChannelUploads(youtubeChannel, strings.TrimSpace(pageToken))
 		pageToken = response.NextPageToken
 
@@ -167,9 +170,9 @@ func AreVideosOutOfDate(youtubeDB *sql.DB, channel *youtubedata.Channel) bool {
 }
 
 func getChannelGoRoutineCount(youtubeChannels []youtubedata.Channel) int {
-	if len(youtubeChannels) < api.MaxConcurrentGoRoutines {
+	if len(youtubeChannels) < db.MaxDatabaseGoRoutines {
 		return len(youtubeChannels)
 	}
 
-	return api.MaxConcurrentGoRoutines
+	return db.MaxDatabaseGoRoutines
 }

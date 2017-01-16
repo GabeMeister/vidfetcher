@@ -14,22 +14,31 @@ func FetchVideoInfo(youtubeIDs []string, youtubeChannel *youtubedata.Channel) []
 	youtubeIDBatches := BreakYoutubeIDsIntoBatches(youtubeIDs, 50)
 
 	for i, idBatch := range youtubeIDBatches {
-		log.Printf("Fetching video info #%d for %s", i+1, youtubeChannel.Title())
+		log.Printf("Video info #%d for %s", i+1, youtubeChannel.Title())
 
-		service := GetYoutubeService()
+		attempts := 0
+		success := false
 
-		call := service.Videos.
-			List("snippet,contentDetails,statistics").
-			Id(idBatch).
-			MaxResults(50)
-		response, err := call.Do()
-		if err != nil {
-			log.Fatalln("Couldn't fetch video info %v", err)
+		// Attempt up to 3 times to fetch video data. If not able to fetch, we just log and continue
+		for attempts < 3 && success == false {
+			service := GetYoutubeService()
+
+			call := service.Videos.
+				List("snippet,contentDetails,statistics").
+				Id(idBatch).
+				MaxResults(50)
+			response, err := call.Do()
+			if err != nil {
+				log.Printf("Couldn't fetch video info %v\n", err)
+				attempts++
+			} else {
+				success = true
+				for _, vid := range response.Items {
+					youtubeVideos = append(youtubeVideos, youtubedata.Video{APIVideo: vid, ChannelID: youtubeChannel.ChannelID})
+				}
+			}
 		}
 
-		for _, vid := range response.Items {
-			youtubeVideos = append(youtubeVideos, youtubedata.Video{APIVideo: vid, ChannelID: youtubeChannel.ChannelID})
-		}
 	}
 
 	return youtubeVideos

@@ -10,6 +10,10 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// MaxDatabaseGoRoutines is the maximum allowed number of concurrent
+// go routines allowed when inserting data into the database
+const MaxDatabaseGoRoutines = 10
+
 // CreateDBInstance creates an instance of a database connection to
 // be used throughout the duration of the program
 func CreateDBInstance() *sql.DB {
