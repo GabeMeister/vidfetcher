@@ -79,6 +79,7 @@ func FetchNewVideosForChannels(youtubeChannels []youtubedata.Channel) {
 				videosToInsert := api.FetchVideoInfo(youtubeIDs, &youtubeChannel)
 
 				// Insert videos into database
+				log.Printf("Inserting %d videos for %s\n", len(videosToInsert), youtubeChannel.Title())
 				db.InsertVideos(youtubeDB, videosToInsert)
 			}
 		}()
@@ -137,15 +138,19 @@ func FetchNewUploadsForChannel(youtubeDB *sql.DB, youtubeChannel *youtubedata.Ch
 // out of date in the database when compared to the latest video uploads
 func GetOutOfDateChannels(youtubeDB *sql.DB, channels []youtubedata.Channel) []youtubedata.Channel {
 	// Only get channels with videos
+	log.Println("getting only channels with videos")
 	channels = youtubedata.GetOnlyChannelsWithVideos(channels)
 
 	// If channel ids haven't been initialized with database yet, then populate the channel id
+	log.Println("getting channel ids from youtube ids")
 	db.PopulateChannelIDsFromYoutubeIDs(youtubeDB, channels)
 
 	// Only get channels that don't have matching video counts
+	log.Println("getting out of date channels")
 	channels = db.GetOutOfDateChannels(youtubeDB, channels)
 
 	// Sort channels by video count descending
+	log.Println("sorting channels")
 	sortedChannels := make(youtubedata.ChannelsByDescendingVideoCount, len(channels))
 	copy(sortedChannels, channels)
 	sort.Sort(sortedChannels)

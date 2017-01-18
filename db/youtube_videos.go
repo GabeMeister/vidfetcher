@@ -40,7 +40,7 @@ func InsertVideos(youtubeDB *sql.DB, videos []youtubedata.Video) {
 
 // InsertVideo inserts 1 video into the database
 func InsertVideo(youtubeDB *sql.DB, video youtubedata.Video) {
-	log.Printf("inserting %s %s\n", video.YoutubeID(), video.Title())
+	// log.Printf("inserting %s %s\n", video.YoutubeID(), video.Title())
 
 	stmt, err := youtubeDB.Prepare("insert into Videos (YoutubeID,ChannelID,Title,Thumbnail,Duration,ViewCount,PublishedAt) values ($1,$2,$3,$4,$5,$6,$7)")
 	if err != nil {
