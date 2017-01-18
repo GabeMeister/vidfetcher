@@ -11,6 +11,8 @@ import (
 
 // SelectAllCollectionItemYoutubeIDs selects all channel ids from collections
 func SelectAllCollectionItemYoutubeIDs(youtubeDB *sql.DB) []string {
+	channelIDs := []string{}
+
 	rows, err := youtubeDB.Query(`select ch.YoutubeID 
 							from Channels ch
 							where ch.ChannelID in
@@ -21,19 +23,20 @@ func SelectAllCollectionItemYoutubeIDs(youtubeDB *sql.DB) []string {
 							)
 							order by ch.YoutubeID;`)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("unable to select collection item youtube ids", err)
+		return channelIDs
 	}
 	defer rows.Close()
 
-	var channelIDs []string
 	for rows.Next() {
-		var channelIDStr string
-		err := rows.Scan(&channelIDStr)
+		var youtubeID string
+		err := rows.Scan(&youtubeID)
 		if err != nil {
-			log.Fatal(err)
+			log.Println("unable to scan collection item youtube ids", err)
+			continue
 		}
 
-		channelIDs = append(channelIDs, strings.TrimSpace(channelIDStr))
+		channelIDs = append(channelIDs, strings.TrimSpace(youtubeID))
 	}
 
 	return channelIDs

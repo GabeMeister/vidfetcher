@@ -20,7 +20,7 @@ func CreateDBInstance() *sql.DB {
 	dbinfo := dbConnectionStr()
 	youtubeDB, err := sql.Open("postgres", dbinfo)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln("unable to create DB instance", err)
 	}
 
 	return youtubeDB
@@ -34,6 +34,8 @@ func dbConnectionStr() string {
 // SelectColumnFromTable fetches all the channel ids in the channels table
 // maxRows of 0 does not put limit on number of rows returned
 func SelectColumnFromTable(youtubeDB *sql.DB, column string, table string, maxRows uint) []string {
+	results := []string{}
+
 	var sql string
 	if maxRows == 0 {
 		sql = fmt.Sprintf("select %s from %s;", column, table)
@@ -43,16 +45,17 @@ func SelectColumnFromTable(youtubeDB *sql.DB, column string, table string, maxRo
 
 	rows, err := youtubeDB.Query(sql)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("unable to select column from table", err)
+		return results
 	}
 	defer rows.Close()
 
-	var results []string
 	for rows.Next() {
 		var colValue string
 		err := rows.Scan(&colValue)
 		if err != nil {
-			log.Fatal(err)
+			log.Println("unable to scan data from table column", err)
+			break
 		}
 		results = append(results, strings.TrimSpace(colValue))
 	}

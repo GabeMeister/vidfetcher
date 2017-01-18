@@ -14,7 +14,7 @@ type PlaylistItem struct {
 // YoutubeID is the youtube id of the video for the playlist item
 func (p *PlaylistItem) YoutubeID() string {
 	if p.APIPlaylistItem == nil || p.APIPlaylistItem.Snippet == nil {
-		log.Fatalln("playlist item is nil or doesn't contain snippet, cannot get youtube id")
+		log.Fatalln("APIPlaylistItem snippet is nil, cannot get youtube id")
 	}
 
 	return p.APIPlaylistItem.Snippet.ResourceId.VideoId

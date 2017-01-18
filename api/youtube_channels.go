@@ -17,11 +17,14 @@ func FetchChannelDataFromAPI(waitGroup *sync.WaitGroup, youtubeIDCommaText strin
 	ch := make(chan youtubedata.Channel)
 
 	go func() {
+		defer close(ch)
+
 		service := GetYoutubeService()
 		call := service.Channels.List("snippet,statistics,contentDetails").Id(youtubeIDCommaText)
 		response, err := call.Do()
 		if err != nil {
-			log.Fatal(err)
+			log.Println("Unable to fetch channel data from API", err)
+			return
 		}
 
 		for _, item := range response.Items {
@@ -29,7 +32,6 @@ func FetchChannelDataFromAPI(waitGroup *sync.WaitGroup, youtubeIDCommaText strin
 			ch <- youtubeChannel
 		}
 
-		close(ch)
 	}()
 
 	return ch
@@ -37,7 +39,7 @@ func FetchChannelDataFromAPI(waitGroup *sync.WaitGroup, youtubeIDCommaText strin
 
 // FetchChannelUploads fetches up to 50 videos of a channel and returns the whole
 //  playlist item list response
-func FetchChannelUploads(youtubeChannel *youtubedata.Channel, pageToken string) *youtube.PlaylistItemListResponse {
+func FetchChannelUploads(youtubeChannel *youtubedata.Channel, pageToken string) (*youtube.PlaylistItemListResponse, error) {
 	service := GetYoutubeService()
 	call := service.PlaylistItems.
 		List("snippet").
@@ -46,9 +48,6 @@ func FetchChannelUploads(youtubeChannel *youtubedata.Channel, pageToken string) 
 		MaxResults(50)
 
 	response, err := call.Do()
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	return response
+	return response, err
 }

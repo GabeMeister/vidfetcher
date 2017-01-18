@@ -25,7 +25,8 @@ func (c *Channel) String() string {
 func (c *Channel) JSONString() string {
 	bytes, err := json.Marshal(c)
 	if err != nil {
-		log.Fatalln("Unable to marshal youtube channel:", c.String())
+		log.Println("Unable to marshal youtube channel:", c.String())
+		return ""
 	}
 	return string(bytes)
 }
@@ -33,7 +34,7 @@ func (c *Channel) JSONString() string {
 // Title is the title of the channel
 func (c *Channel) Title() string {
 	if c.APIChannel == nil || c.APIChannel.Snippet == nil {
-		log.Fatalln("APIChannel is nil")
+		log.Fatalln("APIChannel snippet is nil, cannot access title")
 	}
 	return c.APIChannel.Snippet.Title
 }
@@ -41,7 +42,7 @@ func (c *Channel) Title() string {
 // YoutubeID is the channels 32 character id string recognized by Youtube
 func (c *Channel) YoutubeID() string {
 	if c.APIChannel == nil {
-		log.Fatalln("APIChannel is nil")
+		log.Fatalln("APIChannel is nil, cannot get YoutubeID")
 	}
 	return c.APIChannel.Id
 }
@@ -49,7 +50,7 @@ func (c *Channel) YoutubeID() string {
 // VideoCount is the video upload count of the channel
 func (c *Channel) VideoCount() uint64 {
 	if c.APIChannel == nil || c.APIChannel.Statistics == nil {
-		log.Fatalln("APIChannel is nil")
+		log.Fatalln("APIChannel statistics is nil, cannot get video count")
 	}
 	return c.APIChannel.Statistics.VideoCount
 }
@@ -57,7 +58,7 @@ func (c *Channel) VideoCount() uint64 {
 // UploadsPlaylistID returns the youtube id of the uploads playlist for the channel
 func (c *Channel) UploadsPlaylistID() string {
 	if c.APIChannel == nil || c.APIChannel.ContentDetails == nil {
-		log.Fatalln("channel does not have content details to fetch uploads playlist id")
+		log.Fatalln("APIChannel contentDetails is nil, cannot get uploads playlist id")
 	}
 
 	return c.APIChannel.ContentDetails.RelatedPlaylists.Uploads

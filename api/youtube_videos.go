@@ -14,7 +14,7 @@ func FetchVideoInfo(youtubeIDs []string, youtubeChannel *youtubedata.Channel) []
 	youtubeIDBatches := BreakYoutubeIDsIntoBatches(youtubeIDs, 50)
 
 	for i, idBatch := range youtubeIDBatches {
-		log.Printf("Video info #%d for %s", i+1, youtubeChannel.Title())
+		log.Printf("Video info #%d for %s\n", i+1, youtubeChannel.Title())
 
 		attempts := 0
 		success := false

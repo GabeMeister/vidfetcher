@@ -11,17 +11,19 @@ import (
 // SelectVideoYoutubeIDsMatchingChannelID selects the YoutubeIDs of
 // all videos that have channelID
 func SelectVideoYoutubeIDsMatchingChannelID(youtubeDB *sql.DB, channelID int) []string {
+	youtubeIDs := []string{}
+
 	rows, err := youtubeDB.Query("select YoutubeID from Videos where ChannelID=$1", channelID)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println("unable to select video youtube ids matching channel id", err)
+		return youtubeIDs
 	}
-
-	youtubeIDs := []string{}
 
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			log.Fatalln(err)
+			log.Println("unable to scan video youtube id", err)
+			continue
 		}
 		youtubeIDs = append(youtubeIDs, strings.TrimSpace(id))
 	}
@@ -59,7 +61,7 @@ func InsertVideo(youtubeDB *sql.DB, video youtubedata.Video) {
 	}
 
 	if rowsAffected < 1 {
-		log.Printf("Rows affected < 1 for %s", video.Title())
+		log.Printf("Rows affected < 1 for %s\n", video.Title())
 		return
 	}
 

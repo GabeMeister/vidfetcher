@@ -19,7 +19,7 @@ func Here() {
 
 // End prints the word "End." and ends program execution
 func End() {
-	log.Fatal("End.")
+	log.Fatalln("End.")
 }
 
 // ReadLines reads a whole file into memory

@@ -105,12 +105,17 @@ func FetchNewUploadsForChannel(youtubeDB *sql.DB, youtubeChannel *youtubedata.Ch
 
 	// Fetch videos up to 50 at a time from api
 	var response *youtube.PlaylistItemListResponse
+	var err error
 
 	pageToken := " "
 	doneFetching := false
 	for pageToken != "" && !doneFetching {
 		log.Printf("New uploads for %s with %s page token\n", youtubeChannel.Title(), pageToken)
-		response = api.FetchChannelUploads(youtubeChannel, strings.TrimSpace(pageToken))
+		response, err = api.FetchChannelUploads(youtubeChannel, strings.TrimSpace(pageToken))
+		if err != nil {
+			log.Println("unable to get channel uploads for", youtubeChannel.Title(), err)
+			break
+		}
 		pageToken = response.NextPageToken
 
 		for _, playlistItem := range response.Items {

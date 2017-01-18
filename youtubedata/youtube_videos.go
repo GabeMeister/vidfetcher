@@ -28,7 +28,8 @@ func (v *Video) String() string {
 func (v *Video) JSONString() string {
 	bytes, err := json.Marshal(v)
 	if err != nil {
-		log.Fatalln("Unable to marshal youtube video:", v.String())
+		log.Println("Unable to marshal youtube video", v.String(), err)
+		return ""
 	}
 	return string(bytes)
 }
@@ -72,7 +73,9 @@ func (v *Video) Duration() string {
 	durationStr = strings.ToLower(durationStr)
 	duration, err := time.ParseDuration(durationStr)
 	if err != nil {
-		log.Fatalf("unable to parse duration string, %v", err)
+		log.Println("unable to parse duration string", err)
+		// If unable to parse duration, we just pretend the video is 2 minutes long
+		duration = time.Duration(2) * time.Minute
 	}
 
 	hours := int(duration.Hours())
@@ -96,13 +99,15 @@ func (v *Video) PublishedAt() string {
 		log.Fatalln("APIVideo's snippet is nil, cannot access published at")
 	}
 
-	time, err := time.Parse(time.RFC3339, v.APIVideo.Snippet.PublishedAt)
+	vidTime, err := time.Parse(time.RFC3339, v.APIVideo.Snippet.PublishedAt)
 	if err != nil {
-		log.Fatalf("could not parse time, %v", err)
+		log.Println("could not parse time", err)
+		// If unable to put in time, just use today's time
+		vidTime = time.Now()
 	}
 
 	return fmt.Sprintf("%04d-%02d-%02d %02d:%02d:%02d",
-		time.Year(), time.Month(), time.Day(), time.Hour(), time.Minute(), time.Second())
+		vidTime.Year(), vidTime.Month(), vidTime.Day(), vidTime.Hour(), vidTime.Minute(), vidTime.Second())
 }
 
 func (v *Video) snippetExists() bool {

@@ -43,7 +43,7 @@ func GetYoutubeService() *youtube.Service {
 	client := getYoutubeClient()
 	service, err := youtube.New(client)
 	if err != nil {
-		log.Fatalf("Error creating new YouTube client: %v", err)
+		log.Fatalln("error creating new YouTube client", err)
 	}
 
 	return service
