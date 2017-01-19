@@ -22,6 +22,12 @@ Golang program to fetch YouTube video data to store in a Postgres database. This
 
 - Using "bounded parallelism" seems to be a lot simpler and easier to do than the "fan in" strategy that I initially used. It's a simpler concept: start a bunch of go routines that all read off of the same channel, and then push all your stuff "down" the channel. The fan in strategy is a lot more involved, with creating a go routine for each item or "batch" of asynchronous tasks you want to perform. 
 
+- Things seemed to "slow down" after about 10 min running the fetcher. I bumped the number of concurrent go routines down to 10, and created separate database instances for each go routine. Things are running a lot smoother now.
+
+- To fetch the channel ids for all the channel youtube ids, I just do 1 big sql query with an ANY keyword in postgres. This query takes like 5 minutes to run, but I still believe it's faster than doing one at a time or "batches".
+
+- I used to be printing out the video titles of each video I was inserting, but it was slowing down the ubuntu terminal after an extended period of time. I took out these print statements and the program can run for a lot longer time now. (almost a full day without crashes or halts)
+
 ## Potential Ideas to Explore:
 
 - Instead of "waiting" to form one big slice of all channel data, just immediately begin fetching videos of channels that are out of date
@@ -40,6 +46,5 @@ Golang program to fetch YouTube video data to store in a Postgres database. This
 
 - For every task, there seems to be a balance that you have to strike between what data you know "beforehand" vs. what work you do "while you go". For instance, I could calculate the total number of channels that are out of date, or I could instead just iterate through all the channels, and check if each (one at a time) is out of date, and then immediately start fetching videos, and just keep track of the count as you go. One way takes longer initially to start fetching videos, but gives the amount of work that the video fetcher is about to do. The other more quickly starts fetching videos, but you don't get to see how much work it has to do until it has completed it.
 
-- Took a while to learn that there's an ANY keyword in postgres that needs to be used in order to add Go slices to sql parameters
 
-- Things seem to "slow down" after about 10 min running the fetcher, I might try separate youtube database instances
+
