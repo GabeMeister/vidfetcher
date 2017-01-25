@@ -72,7 +72,36 @@ func SelectChannelsToDownloadYoutubeIDs(youtubeDB *sql.DB) []string {
 			continue
 		}
 
-		youtubeIDs = append(youtubeIDs, youtubeID)
+		youtubeIDs = append(youtubeIDs, strings.TrimSpace(youtubeID))
+	}
+
+	return youtubeIDs
+}
+
+// SelectSubscriptionChannelYoutubeIDs returns a list of youtube ids from
+// the channels in the Subscriptions table.
+func SelectSubscriptionChannelYoutubeIDs(youtubeDB *sql.DB) []string {
+	youtubeIDs := []string{}
+
+	rows, err := youtubeDB.Query(`
+		select ch.YoutubeID 
+		from Subscriptions s
+		inner join Channels ch on ch.ChannelID=s.BeingSubscribedToChannelID;`)
+	if err != nil {
+		log.Println("unable to select youtube ids from ChannelsToDownload table", err)
+		return youtubeIDs
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var youtubeID string
+		err := rows.Scan(&youtubeID)
+		if err != nil {
+			log.Println("unable to scan youtube ID from ChannelsToDownload", err)
+			continue
+		}
+
+		youtubeIDs = append(youtubeIDs, strings.TrimSpace(youtubeID))
 	}
 
 	return youtubeIDs

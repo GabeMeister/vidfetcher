@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"sort"
 	"strings"
@@ -20,7 +19,7 @@ func FetchYoutubeChannelInfoFromAPI(youtubeIDs []string) []youtubedata.Channel {
 	var waitGroup sync.WaitGroup
 	youtubeIDBatches := api.BreakYoutubeIDsIntoBatches(youtubeIDs, api.MaxAPIResults)
 
-	fmt.Println("api calls to make:", len(youtubeIDBatches))
+	log.Println("api calls to make:", len(youtubeIDBatches))
 
 	var channelsInBatch []chan youtubedata.Channel
 	var count int
@@ -38,11 +37,10 @@ func FetchYoutubeChannelInfoFromAPI(youtubeIDs []string) []youtubedata.Channel {
 
 		for item := range mergedChannel {
 			count++
-			// fmt.Println(count, item)
 			youtubeChannelData = append(youtubeChannelData, item)
 		}
 		waitGroup.Wait()
-		fmt.Println("api calls made:", batchStart+batchSize)
+		log.Println("api calls made:", batchStart+batchSize)
 	}
 
 	return youtubeChannelData
@@ -222,7 +220,7 @@ func AreVideosOutOfDate(youtubeDB *sql.DB, channel *youtubedata.Channel) bool {
 	// doesn't match the count from the api
 	isOutOfDate := (dbVideoCount != apiVideoCount)
 	if isOutOfDate {
-		fmt.Printf("'%s' out of date. DB: %d API: %d\n", channel.Title(), dbVideoCount, apiVideoCount)
+		log.Printf("'%s' out of date. DB: %d API: %d\n", channel.Title(), dbVideoCount, apiVideoCount)
 	}
 
 	return isOutOfDate

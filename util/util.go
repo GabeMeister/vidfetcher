@@ -3,6 +3,7 @@ package util
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os"
 )
@@ -52,4 +53,26 @@ func WriteLines(lines []string, path string) error {
 		fmt.Fprintln(w, line)
 	}
 	return w.Flush()
+}
+
+// InitLoggerAndLogFile creates a log file at filePath location and returns
+// the file handle.
+func InitLoggerAndLogFile(filePath string) *os.File {
+	var file *os.File
+	var err error
+
+	if _, err := os.Stat(filePath); err != nil {
+		file, err = os.Create(filePath)
+	} else {
+		file, err = os.OpenFile(filePath, os.O_APPEND, 0644)
+	}
+
+	if err != nil {
+		log.Fatal("unable to open log file", err)
+	}
+
+	multiWriter := io.MultiWriter(os.Stdout, file)
+	log.SetOutput(multiWriter)
+
+	return file
 }
