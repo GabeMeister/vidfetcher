@@ -94,6 +94,55 @@ func FetchNewVideosForChannels(youtubeChannels []youtubedata.Channel) {
 	wg.Wait()
 }
 
+// FetchNewVideosForChannelsToDownload fetches any new videos for youtubeChannels, and stores them
+// in youtubeDB
+func FetchNewVideosForChannelsToDownload(youtubeChannels []youtubedata.Channel) {
+	numGoRoutines := getChannelGoRoutineCount(youtubeChannels)
+
+	var wg sync.WaitGroup
+	wg.Add(numGoRoutines)
+
+	// Loop to create all the go routines, all reading off of 1 channel
+	ch := make(chan youtubedata.Channel)
+	for i := 0; i < numGoRoutines; i++ {
+		go func() {
+			// Each go routine will use it's own separate database instance
+			youtubeDB := db.CreateDBInstance()
+
+			for {
+				youtubeChannel, ok := <-ch
+				if !ok {
+					wg.Done()
+					return
+				}
+
+				playlistItemsToFetch := FetchNewUploadsForChannel(youtubeDB, &youtubeChannel)
+
+				// Create a slice of youtube ids from the playlist items
+				youtubeIDs := api.GetYoutubeIDsFromPlaylistItems(playlistItemsToFetch)
+
+				// Fetch video info from playlist item
+				videosToInsert := api.FetchVideoInfo(youtubeIDs, &youtubeChannel)
+
+				// Insert videos into database
+				log.Printf("Inserting %d videos for %s\n", len(videosToInsert), youtubeChannel.Title())
+				db.InsertVideos(youtubeDB, videosToInsert)
+
+				// Remove channel from ChannelsToDownload table
+				db.DeleteChannelFromChannelsToDownload(youtubeDB, youtubeChannel.ChannelID)
+			}
+		}()
+	}
+
+	// Loop to send youtube channels down the channel
+	for i := range youtubeChannels {
+		ch <- youtubeChannels[i]
+	}
+
+	close(ch)
+	wg.Wait()
+}
+
 // FetchNewUploadsForChannel fetches all the new video uploads for the specified youtube channel
 // It will stop fetching when it has fetched a video whose YoutubeID already exists in the database
 func FetchNewUploadsForChannel(youtubeDB *sql.DB, youtubeChannel *youtubedata.Channel) []youtubedata.PlaylistItem {

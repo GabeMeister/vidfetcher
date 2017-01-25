@@ -46,8 +46,36 @@ func PopulateChannelIDFromYoutubeID(youtubeDB *sql.DB, channel *youtubedata.Chan
 
 // SelectAllChannelYoutubeIDs fetches all channel
 func SelectAllChannelYoutubeIDs(youtubeDB *sql.DB) []string {
-	// TODO: Remove the vid count limit
 	return SelectColumnFromTable(youtubeDB, "YoutubeID", "Channels", 0)
+}
+
+// SelectChannelsToDownloadYoutubeIDs gets the youtube ids of all channels found
+// in the ChannelsToDownload table
+func SelectChannelsToDownloadYoutubeIDs(youtubeDB *sql.DB) []string {
+	youtubeIDs := []string{}
+
+	rows, err := youtubeDB.Query(`
+		select ch.YoutubeID 
+		from ChannelsToDownload ctd
+		inner join Channels ch on ch.ChannelID=ctd.ChannelID;`)
+	if err != nil {
+		log.Println("unable to select youtube ids from ChannelsToDownload table", err)
+		return youtubeIDs
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var youtubeID string
+		err := rows.Scan(&youtubeID)
+		if err != nil {
+			log.Println("unable to scan youtube ID from ChannelsToDownload", err)
+			continue
+		}
+
+		youtubeIDs = append(youtubeIDs, youtubeID)
+	}
+
+	return youtubeIDs
 }
 
 // SelectChannelIDsFromYoutubeIDs does a batch select of channel ids for the given youtube channels
@@ -141,6 +169,21 @@ func SelectVideoCountOfChannel(youtubeDB *sql.DB, channelID int) uint64 {
 	}
 
 	return count
+}
+
+// DeleteChannelFromChannelsToDownload deletes the specified channel id from the
+// ChannelsToDownload table
+func DeleteChannelFromChannelsToDownload(youtubeDB *sql.DB, channelID int) {
+	stmt, err := youtubeDB.Prepare(`delete from ChannelsToDownload where ChannelID=$1;`)
+	if err != nil {
+		log.Println("unable to prepare delete for channel from ChannelsToDownload", err)
+		return
+	}
+
+	if _, err := stmt.Exec(channelID); err != nil {
+		log.Println("unable to prepare delete for channel from ChannelsToDownload", err)
+		return
+	}
 }
 
 // GetOutOfDateChannels returns only channels that are out of date in the database
