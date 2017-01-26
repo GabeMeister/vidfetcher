@@ -58,14 +58,7 @@ func WriteLines(lines []string, path string) error {
 // InitLoggerAndLogFile creates a log file at filePath location and returns
 // the file handle.
 func InitLoggerAndLogFile(filePath string) *os.File {
-	var file *os.File
-	var err error
-
-	if _, err := os.Stat(filePath); err != nil {
-		file, err = os.Create(filePath)
-	} else {
-		file, err = os.OpenFile(filePath, os.O_APPEND, 0644)
-	}
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 
 	if err != nil {
 		log.Fatal("unable to open log file", err)
